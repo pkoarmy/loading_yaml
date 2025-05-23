@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"myapp/lib" // Module name 'myapp'
+	"github.com/pkoarmy/loading_yaml/lib"
 )
 
 type configItems struct {
