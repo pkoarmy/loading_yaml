@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/pkoarmy/loading_yaml/lib"
+)
 
 type configItems struct {
 	cname          string
@@ -17,48 +20,41 @@ var (
 )
 
 const (
-	CONFIG = "./bucket.yaml"
+	CONFIG = "./bucket.yaml" // This file won't exist yet, but the code refers to it.
 )
 
 func main() {
 	fmt.Println("hello")
 
-	/*
-		mydomain.com:
-		  cname: mydomain.com
-		  flatten_header: myheader
-		  match_percent: <nil> # 50 vs 50 ( 100% )
-		  match_bucket: <nil>
-		  match_variable: <nil>
-		  attach_header: true
-	*/
 	yamlConfig, err := lib.LoadYAML(CONFIG)
 	if err != nil {
 		fmt.Println(" error on Load YAML", CONFIG, err)
+		// Consider os.Exit(1) here or other error handling
+		return // Exit if YAML loading fails
 	}
-	for k, v := range yamlConfig {
-		vv := v.(map[string]any)
+
+	for k, v_interface := range yamlConfig {
+		// v_interface is of type interface{}. We need to assert it to map[string]interface{}
+		// which is the type our helper functions expect for their first argument.
+		vv, ok := v_interface.(map[string]interface{})
+		if !ok {
+			fmt.Printf("Warning: Invalid structure for key '%s' in YAML. Expected a map, got %T.\n", k, v_interface)
+			continue // Skip this entry if it's not a map
+		}
+
 		ci := configItems{}
-		if vv["cname"] != nil {
-			ci.cname = vv["cname"].(string)
-		}
-		if vv["flatten_header"] != nil {
-			ci.flatten_header = vv["flatten_header"].(string)
-		}
-		if vv["match_percent"] != nil {
-			ci.match_percent = vv["match_percent"].(int)
-		}
-		if vv["match_bucket"] != nil {
-			ci.match_bucket = vv["match_bucket"].(string)
-		}
-		if vv["match_variable"] != nil {
-			ci.match_variable = vv["match_variable"].(string)
-		}
-		if vv["attach_header"] != nil {
-			ci.attach_header = vv["attach_header"].(bool)
-		}
+		ci.cname = lib.GetString(vv, "cname", "")
+		ci.flatten_header = lib.GetString(vv, "flatten_header", "")
+		ci.match_percent = lib.GetInt(vv, "match_percent", 0) // Defaulting to 0 if nil or wrong type
+		ci.match_bucket = lib.GetString(vv, "match_bucket", "")
+		ci.match_variable = lib.GetString(vv, "match_variable", "")
+		ci.attach_header = lib.GetBool(vv, "attach_header", false) // Defaulting to false
 
 		bucketConfig[k] = ci
 	}
 
+	// Optional: Print the loaded config to verify
+	// for key, config := range bucketConfig {
+	//  	fmt.Printf("Loaded config for %s: %+v\n", key, config)
+	// }
 }
